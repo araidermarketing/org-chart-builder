@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Org Chart Builder</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: #eef2f7;
+  overflow: hidden;
+}
+
+/* ── TOOLBAR ─────────────────────────────────────── */
+#toolbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  background: #1a1a2e; z-index: 200;
+  box-shadow: 0 2px 14px rgba(0,0,0,0.38);
+}
+#tb-row1, #tb-row2 {
+  display: flex; align-items: center; gap: 6px; padding: 6px 14px;
+}
+#tb-row1 { border-bottom: 1px solid rgba(255,255,255,0.07); }
+
+.tb-brand { color: #fff; font-weight: 800; font-size: 15px; margin-right: 6px; white-space: nowrap; }
+.tb-sep { width: 1px; height: 24px; background: #2d2d4e; margin: 0 3px; flex-shrink: 0; }
+
+.tb-field { display: flex; align-items: center; gap: 5px; }
+.tb-field label { color: #94a3b8; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.tb-input {
+  background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.14);
+  color: #fff; border-radius: 7px; padding: 4px 9px;
+  font-size: 12px; font-family: inherit; outline: none;
+  transition: border-color 0.2s;
+}
+.tb-input::placeholder { color: rgba(255,255,255,0.3); }
+.tb-input:focus { border-color: #7c3aed; }
+#bizNameIn { width: 160px; }
+#bizDateIn { width: 130px; color-scheme: dark; }
+
+.btn {
+  padding: 5px 11px; border: none; border-radius: 7px; cursor: pointer;
+  font-size: 11.5px; font-weight: 700; display: inline-flex; align-items: center;
+  gap: 4px; white-space: nowrap; transition: filter 0.15s, transform 0.1s; flex-shrink: 0;
+}
+.btn:hover  { filter: brightness(1.15); transform: translateY(-1px); }
+.btn:active { transform: translateY(0); }
+.btn-green  { background: #16a34a; color: #fff; }
+.btn-blue   { background: #2563eb; color: #fff; }
+.btn-purple { background: #7c3aed; color: #fff; }
+.btn-teal   { background: #0891b2; color: #fff; }
+.btn-orange { background: #d97706; color: #fff; }
+.btn-gray   { background: #6b7280; color: #fff; }
+.btn-red    { background: #dc2626; color: #fff; }
+.btn-slate  { background: #334155; color: #cbd5e1; }
+.btn-dark   { background: rgba(255,255,255,0.1); color: #e2e8f0; border: 1px solid rgba(255,255,255,0.15); }
+.btn-icon   { padding: 5px 8px; font-size: 13px; }
+
+/* Spacing group */
+.spacing-group {
+  display: flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,0.07); border-radius: 7px;
+  padding: 3px 9px; border: 1px solid rgba(255,255,255,0.1);
+}
+.spacing-group label { color: #94a3b8; font-size: 10px; font-weight: 700; }
+.spacing-group span  { color: #94a3b8; font-size: 10px; }
+.gap-input {
+  width: 44px; background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.14);
+  color: #fff; border-radius: 5px; padding: 2px 5px;
+  font-size: 11px; font-family: inherit; text-align: center; outline: none;
+}
+.gap-input:focus { border-color: #7c3aed; }
+
+/* Zoom group */
+.zoom-group {
+  display: flex; align-items: center; gap: 4px;
+  background: rgba(255,255,255,0.07); border-radius: 7px;
+  padding: 3px 8px; border: 1px solid rgba(255,255,255,0.1);
+}
+.zoom-group label { color: #94a3b8; font-size: 10px; font-weight: 700; margin-right: 2px; }
+.zoom-btn {
+  width: 20px; height: 20px; border-radius: 4px; border: none; cursor: pointer;
+  background: rgba(255,255,255,0.15); color: #fff; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; line-height: 1;
+  transition: background 0.15s;
+}
+.zoom-btn:hover { background: rgba(255,255,255,0.28); }
+#zoomVal { color: #fff; font-size: 11px; font-weight: 700; min-width: 32px; text-align: center; }
+
+/* Load select */
+.load-select {
+  background: rgba(255,255,255,0.09); border: 1px solid rgba(255,255,255,0.14);
+  color: #fff; border-radius: 7px; padding: 5px 9px;
+  font-size: 11px; font-family: inherit; outline: none; cursor: pointer; max-width: 190px;
+}
+.load-select option { background: #1e293b; color: #fff; }
+.load-select:focus  { border-color: #7c3aed; }
+
+/* Row label */
+.row-label { color: #64748b; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-right: 2px; white-space: nowrap; }
+
+/* ── CANVAS ──────────────────────────────────────── */
+#canvas-wrap {
+  position: fixed; left: 0; right: 0; bottom: 0;
+  overflow: auto;
+  background: #eef2f7;
+  background-image: radial-gradient(circle, #c9d3e0 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+#canvas {
+  position: relative; min-width: 1600px; min-height: 1200px;
+  transform-origin: 0 0;
+}
+#svg-lines {
+  position: absolute; top: 0; left: 0;
+  width: 100%; height: 100%; pointer-events: none;
+}
+
+/* ── NODES ───────────────────────────────────────── */
+.node {
+  position: absolute; cursor: grab; user-select: none;
+  border-radius: 14px; border: 2px solid rgba(0,0,0,0.07);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+  background: #fff; min-width: 148px;
+  transition: box-shadow 0.2s, border-color 0.2s;
+}
+.node:hover { box-shadow: 0 8px 28px rgba(0,0,0,0.15); z-index: 50; }
+.node.selected {
+  border-color: #7c3aed !important;
+  box-shadow: 0 0 0 3px rgba(124,58,237,0.22), 0 8px 28px rgba(0,0,0,0.15);
+}
+.node.dragging { cursor: grabbing; z-index: 998; box-shadow: 0 18px 50px rgba(0,0,0,0.2); }
+
+.node.ceo {
+  background: linear-gradient(145deg, #4c1d95, #7c3aed) !important;
+  border-color: rgba(255,255,255,0.18) !important;
+  min-width: 168px;
+}
+.node.ceo .node-name  { color: #fff; font-size: 14px; }
+.node.ceo .node-title { color: rgba(255,255,255,0.72); }
+.node.ceo .node-photo { width: 70px; height: 70px; border-color: rgba(255,255,255,0.45); }
+
+.node.dept { border-radius: 22px; min-width: 148px; }
+.node.dept .node-inner { padding: 11px 16px; }
+.node.dept .node-name { font-size: 13px; font-weight: 800; }
+
+.node-inner { padding: 13px 11px 11px; text-align: center; position: relative; }
+
+.node-photo {
+  width: 58px; height: 58px; border-radius: 50%;
+  margin: 0 auto 8px; overflow: hidden; position: relative;
+  border: 3px solid rgba(255,255,255,0.7);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.13);
+  background: #dde4ef; display: flex; align-items: center;
+  justify-content: center; font-size: 22px; cursor: pointer;
+}
+.node-photo img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; inset: 0; }
+.node-photo::after {
+  content: '📷'; position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.42); display: flex; align-items: center;
+  justify-content: center; font-size: 16px; opacity: 0; transition: opacity 0.18s; pointer-events: none;
+}
+.node-photo:hover::after { opacity: 1; }
+
+.node-name  { font-weight: 700; font-size: 13px; color: #111827; margin-bottom: 3px; line-height: 1.25; }
+.node-title { font-size: 11px; color: #6b7280; font-weight: 500; }
+
+.node-actions {
+  position: absolute; top: 5px; right: 5px;
+  display: none; flex-direction: column; gap: 3px; z-index: 10;
+}
+.node:hover .node-actions { display: flex; }
+.na {
+  width: 21px; height: 21px; border-radius: 50%; border: none; cursor: pointer;
+  font-size: 11px; display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 1px 5px rgba(0,0,0,0.22); transition: transform 0.15s;
+}
+.na:hover  { transform: scale(1.2); }
+.na-edit   { background: #2563eb; color: #fff; }
+.na-add    { background: #16a34a; color: #fff; font-size: 14px; font-weight: 700; line-height: 1; }
+.na-del    { background: #dc2626; color: #fff; }
+
+/* ── MODAL ───────────────────────────────────────── */
+.modal-bg {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.52); z-index: 400;
+  align-items: center; justify-content: center;
+}
+.modal-bg.open { display: flex; }
+.modal-box {
+  background: #fff; border-radius: 18px; padding: 26px;
+  width: 420px; max-height: 88vh; overflow-y: auto;
+  box-shadow: 0 28px 80px rgba(0,0,0,0.32);
+  animation: popIn 0.18s ease;
+}
+@keyframes popIn {
+  from { opacity: 0; transform: scale(0.96) translateY(-10px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0); }
+}
+.modal-box h3 { font-size: 17px; color: #111827; margin-bottom: 20px; }
+.field { margin-bottom: 15px; }
+.field label {
+  display: block; font-size: 10px; font-weight: 700; letter-spacing: 0.6px;
+  text-transform: uppercase; color: #6b7280; margin-bottom: 5px;
+}
+.field input {
+  width: 100%; padding: 9px 13px; border: 2px solid #e5e7eb;
+  border-radius: 10px; font-size: 14px; outline: none;
+  transition: border-color 0.18s; font-family: inherit;
+}
+.field input:focus { border-color: #7c3aed; }
+
+.m-photo-row { display: flex; align-items: center; gap: 12px; margin: 5px 0 9px; }
+.m-photo-ring {
+  width: 68px; height: 68px; border-radius: 50%; overflow: hidden;
+  border: 3px solid #7c3aed; background: #ede9fe;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; flex-shrink: 0; position: relative;
+}
+.m-photo-ring img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; position: absolute; inset: 0; }
+.m-photo-btns { display: flex; flex-direction: column; gap: 5px; }
+
+.palette { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 7px; }
+.swatch {
+  width: 25px; height: 25px; border-radius: 50%; cursor: pointer;
+  border: 2px solid transparent; transition: transform 0.15s, border-color 0.15s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+.swatch:hover  { transform: scale(1.25); }
+.swatch.picked { border-color: #111827 !important; transform: scale(1.25); }
+
+.modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.btn-cancel { background: #f1f5f9; color: #475569; }
+.btn-save   { background: #7c3aed; color: #fff; }
+
+/* ── TOAST ───────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: 22px; right: 22px; z-index: 600;
+  background: #111827; color: #fff; padding: 10px 16px;
+  border-radius: 12px; font-size: 13px; font-weight: 600;
+  pointer-events: none; transform: translateY(70px);
+  transition: transform 0.28s; box-shadow: 0 8px 24px rgba(0,0,0,0.22);
+}
+#toast.show { transform: translateY(0); }
+
+/* ── PRINT ───────────────────────────────────────── */
+@media print {
+  #toolbar, .node-actions { display: none !important; }
+  #canvas-wrap {
+    position: static !important; overflow: visible !important;
+    background: #fff !important; top: 0 !important;
+    background-image: none !important;
+  }
+  #canvas {
+    min-width: auto !important; min-height: auto !important;
+    background-image: none !important;
+  }
+  body { overflow: visible; background: #fff; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── TOOLBAR ─────────────────────────────────────────── -->
+<div id="toolbar">
+  <!-- Row 1 -->
+  <div id="tb-row1">
+    <span class="tb-brand">🏢 Org Chart</span>
+    <div class="tb-sep"></div>
+
+    <div class="tb-field">
+      <label>Business</label>
+      <input id="bizNameIn" class="tb-input" type="text" placeholder="Business name…">
+    </div>
+    <div class="tb-field">
+      <label>Date</label>
+      <input id="bizDateIn" class="tb-input" type="date">
+    </div>
+
+    <div class="tb-sep"></div>
+    <button class="btn btn-green"  onclick="addToSelected()">➕ Add Node</button>
+    <div class="tb-sep"></div>
+    <button class="btn btn-blue"   onclick="saveChart()">💾 Save</button>
+    <button class="btn btn-orange" onclick="exportChart()">📤 Export</button>
+    <button class="btn btn-purple" onclick="$('fileIn').click()">📥 Import</button>
+    <button class="btn btn-gray"   onclick="printPDF()">🖨️ PDF</button>
+    <div class="tb-sep"></div>
+    <button class="btn btn-red"    onclick="resetChart()">🔄 Reset</button>
+
+    <input id="fileIn" type="file" accept=".json" style="display:none" onchange="importChart(event)">
+    <input id="imgIn"  type="file" accept="image/*" style="display:none" onchange="onImageFile(event)">
+  </div>
+
+  <!-- Row 2 -->
+  <div id="tb-row2">
+    <span class="row-label">Layout</span>
+
+    <div class="spacing-group">
+      <label>H</label>
+      <input id="hGap" class="gap-input" type="number" value="185" min="80" max="400" step="10">
+      <span>px</span>
+    </div>
+    <div class="spacing-group">
+      <label>V</label>
+      <input id="vGap" class="gap-input" type="number" value="160" min="80" max="350" step="10">
+      <span>px</span>
+    </div>
+    <button class="btn btn-teal"  onclick="autoLayout()">⊞ Apply Layout</button>
+    <button class="btn btn-slate" onclick="setSpacing(130,120)">Compact</button>
+    <button class="btn btn-slate" onclick="setSpacing(185,160)">Normal</button>
+    <button class="btn btn-slate" onclick="setSpacing(240,200)">Spacious</button>
+
+    <div class="tb-sep"></div>
+    <span class="row-label">Zoom</span>
+
+    <div class="zoom-group">
+      <button class="zoom-btn" onclick="changeZoom(-0.1)">−</button>
+      <span id="zoomVal">100%</span>
+      <button class="zoom-btn" onclick="changeZoom(+0.1)">+</button>
+    </div>
+    <button class="btn btn-slate" onclick="setZoom(1)">100%</button>
+    <button class="btn btn-teal"  onclick="fitChart()">↔ Fit Chart</button>
+
+    <div class="tb-sep"></div>
+
+    <select class="load-select" id="loadSelect" onchange="loadSave(this.value)">
+      <option value="">📂 Load Saved Chart…</option>
+    </select>
+    <button class="btn btn-red btn-icon" onclick="deleteCurrentSave()" title="Delete selected save">🗑</button>
+  </div>
+</div>
+
+<!-- ── CANVAS ──────────────────────────────────────────── -->
+<div id="canvas-wrap">
+  <div id="canvas">
+    <svg id="svg-lines"></svg>
+  </div>
+</div>
+
+<!-- ── EDIT MODAL ──────────────────────────────────────── -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal-box">
+    <h3 id="modalTitle">Edit Node</h3>
+    <div class="field">
+      <label>Name</label>
+      <input type="text" id="mName" placeholder="Full name">
+    </div>
+    <div class="field">
+      <label>Title / Role</label>
+      <input type="text" id="mRole" placeholder="Job title or role">
+    </div>
+    <div class="field" id="photoField">
+      <label>Photo</label>
+      <div class="m-photo-row">
+        <div class="m-photo-ring" id="mPhotoRing">
+          <span id="mPhotoIcon">👤</span>
+          <img id="mPhotoImg" style="display:none">
+        </div>
+        <div class="m-photo-btns">
+          <button class="btn btn-blue" onclick="triggerImg('modal')" style="font-size:11px;padding:5px 10px">📷 Upload Photo</button>
+          <button class="btn btn-gray" onclick="clearModalPhoto()"   style="font-size:11px;padding:5px 10px">✕ Remove Photo</button>
+        </div>
+      </div>
+    </div>
+    <div class="field" id="colorField">
+      <label>Node Color</label>
+      <div class="palette" id="palette"></div>
+      <input type="color" id="customColor"
+        style="margin-top:9px;height:32px;width:50px;border-radius:7px;border:2px solid #e5e7eb;cursor:pointer;padding:2px"
+        onchange="pickCustomColor()">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-save"   onclick="saveModal()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ──────────────────────────────────────────────────
+//  HELPERS
+// ──────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+let _uid = 100;
+const uid = () => 'n' + (++_uid) + '_' + Math.random().toString(36).slice(2,6);
+function esc(s) {
+  return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ──────────────────────────────────────────────────
+//  COLORS
+// ──────────────────────────────────────────────────
+const COLORS = [
+  '#ffffff','#fffbeb','#fef3c7','#fde68a',
+  '#fce7f3','#fbcfe8','#fecaca','#fed7aa',
+  '#d1fae5','#a7f3d0','#dbeafe','#bfdbfe',
+  '#ede9fe','#e0e7ff','#ccfbf1','#f0fdf4'
+];
+
+// ──────────────────────────────────────────────────
+//  DATA MODEL
+// ──────────────────────────────────────────────────
+function makeNode(o) {
+  return Object.assign({
+    id: uid(), name: 'New Member', title: 'Title',
+    image: null, color: '#ffffff', type: 'member',
+    x: 40, y: 40, children: []
+  }, o);
+}
+
+// Default chart: left-aligned so it fits within ~950px width
+// CEO centered above 5 depts, depts start at x=40
+// Dept width ~148px, H spacing ~185 → 5 depts span ~925px
+// Dept centers: 114, 299, 484, 669, 854 → CEO center = 484
+function makeDefaultTree() {
+  return {
+    id: 'root', name: 'Your Name', title: 'CEO / Owner',
+    image: null, color: 'ceo', type: 'ceo',
+    x: 400, y: 40, children: [
+      { id:'d1', name:'Department 1', title:'Department', image:null, color:'#fef3c7', type:'dept', x:40,  y:230, children:[] },
+      { id:'d2', name:'Department 2', title:'Department', image:null, color:'#fce7f3', type:'dept', x:225, y:230, children:[] },
+      { id:'d3', name:'Department 3', title:'Department', image:null, color:'#d1fae5', type:'dept', x:410, y:230, children:[] },
+      { id:'d4', name:'Department 4', title:'Department', image:null, color:'#dbeafe', type:'dept', x:595, y:230, children:[] },
+      { id:'d5', name:'Department 5', title:'Department', image:null, color:'#ede9fe', type:'dept', x:780, y:230, children:[] },
+    ]
+  };
+}
+
+let tree = {
+  id: 'root', name: 'Your Name', title: 'CEO / Owner',
+  image: null, color: 'ceo', type: 'ceo',
+  x: 400, y: 40, children: [
+    { id:'d1', name:'Finance Team',   title:'Department', image:null, color:'#fef3c7', type:'dept', x:40,  y:230, children:[
+      makeNode({id:'m11', name:'Team Member', title:'Financial Manager', color:'#fef9e7', x:40,  y:400}),
+      makeNode({id:'m12', name:'Team Member', title:'Assistant Manager', color:'#fef9e7', x:40,  y:560}),
+    ]},
+    { id:'d2', name:'Technical Team', title:'Department', image:null, color:'#fce7f3', type:'dept', x:225, y:230, children:[
+      makeNode({id:'m21', name:'Team Member', title:'Technical Manager', color:'#fdf2f8', x:225, y:400}),
+      makeNode({id:'m22', name:'Team Member', title:'Senior Manager',    color:'#fdf2f8', x:225, y:560}),
+    ]},
+    { id:'d3', name:'HR Team',        title:'Department', image:null, color:'#d1fae5', type:'dept', x:410, y:230, children:[
+      makeNode({id:'m31', name:'Team Member', title:'HR Manager',        color:'#ecfdf5', x:410, y:400}),
+      makeNode({id:'m32', name:'Team Member', title:'Staff',             color:'#ecfdf5', x:410, y:560}),
+    ]},
+    { id:'d4', name:'Marketing Team', title:'Department', image:null, color:'#dbeafe', type:'dept', x:595, y:230, children:[
+      makeNode({id:'m41', name:'Team Member', title:'Marketing Manager', color:'#eff6ff', x:595, y:400}),
+    ]},
+    { id:'d5', name:'Administration', title:'Department', image:null, color:'#ede9fe', type:'dept', x:780, y:230, children:[
+      makeNode({id:'m51', name:'Team Member', title:'Admin Manager',     color:'#f5f3ff', x:780, y:400}),
+    ]},
+  ]
+};
+
+// ──────────────────────────────────────────────────
+//  SAVED CHARTS
+// ──────────────────────────────────────────────────
+let savedCharts = [];
+try { savedCharts = JSON.parse(localStorage.getItem('__orgchart_saves') || '[]'); } catch(e) {}
+
+// Restore last session
+try {
+  const last = localStorage.getItem('__orgchart_session');
+  if (last) {
+    const p = JSON.parse(last);
+    tree = p.tree;
+    $('bizNameIn').value = p.bizName || '';
+    $('bizDateIn').value = p.bizDate || '';
+  }
+} catch(e) {}
+
+// ──────────────────────────────────────────────────
+//  STATE
+// ──────────────────────────────────────────────────
+let selectedId = null;
+let editingId  = null;
+let editImg    = null;
+let imgTarget  = null;
+let canvasZoom = 1.0;
+let nodeEls    = {};
+
+// ──────────────────────────────────────────────────
+//  TREE UTILS
+// ──────────────────────────────────────────────────
+function find(id, node = tree) {
+  if (!node) return null;
+  if (node.id === id) return node;
+  for (const c of node.children||[]) { const f = find(id,c); if(f) return f; }
+  return null;
+}
+
+function removeFromTree(id, node = tree) {
+  if (!node.children) return false;
+  const i = node.children.findIndex(c => c.id === id);
+  if (i !== -1) { node.children.splice(i,1); return true; }
+  return node.children.some(c => removeFromTree(id, c));
+}
+
+function walk(node, fn) {
+  fn(node);
+  (node.children||[]).forEach(c => walk(c, fn));
+}
+
+function countDesc(node) {
+  return (node.children||[]).reduce((s,c) => s + 1 + countDesc(c), 0);
+}
+
+// ──────────────────────────────────────────────────
+//  ZOOM
+// ──────────────────────────────────────────────────
+function setZoom(z) {
+  canvasZoom = Math.max(0.2, Math.min(2.0, Math.round(z * 10) / 10));
+  $('canvas').style.transform = `scale(${canvasZoom})`;
+  $('canvas').style.transformOrigin = '0 0';
+  $('zoomVal').textContent = Math.round(canvasZoom * 100) + '%';
+  // Adjust canvas-wrap scrollable area via padding
+  $('canvas').style.marginRight  = ((1 - canvasZoom) * 100) + 'px'; // rough correction
+  $('canvas').style.marginBottom = ((1 - canvasZoom) * 100) + 'px';
+  drawLines();
+}
+
+function changeZoom(delta) {
+  setZoom(canvasZoom + delta);
+}
+
+// ──────────────────────────────────────────────────
+//  FIT CHART (move all nodes to top-left)
+// ──────────────────────────────────────────────────
+function fitChart() {
+  const PAD = 40;
+  let minX = Infinity, minY = Infinity;
+  walk(tree, n => { minX = Math.min(minX, n.x); minY = Math.min(minY, n.y); });
+  if (!isFinite(minX)) return;
+  const dx = PAD - minX, dy = PAD - minY;
+  walk(tree, n => { n.x += dx; n.y += dy; });
+  render();
+  $('canvas-wrap').scrollLeft = 0;
+  $('canvas-wrap').scrollTop  = 0;
+  toast('↔ Chart moved to top-left');
+}
+
+// ──────────────────────────────────────────────────
+//  AUTO LAYOUT (left-anchored)
+// ──────────────────────────────────────────────────
+function setSpacing(h, v) {
+  $('hGap').value = h; $('vGap').value = v; autoLayout();
+}
+
+function autoLayout() {
+  const hGap  = Math.max(80, parseInt($('hGap').value) || 185);
+  const vGap  = Math.max(80, parseInt($('vGap').value) || 160);
+  const PAD   = 40; // left margin for entire chart
+
+  function minW(node) {
+    if (!node.children || node.children.length === 0) return hGap;
+    return Math.max(hGap, node.children.reduce((s,c) => s + minW(c), 0));
+  }
+
+  function layoutNode(node, cx, depth) {
+    const el = nodeEls[node.id];
+    const w  = el ? el.offsetWidth : (node.type === 'ceo' ? 168 : node.type === 'dept' ? 148 : 148);
+    node.y = PAD + depth * vGap;
+    node.x = cx - w / 2;
+    if (!node.children || node.children.length === 0) return;
+    const totalW = node.children.reduce((s,c) => s + minW(c), 0);
+    let curX = cx - totalW / 2;
+    node.children.forEach(child => {
+      const sw = minW(child);
+      layoutNode(child, curX + sw / 2, depth + 1);
+      curX += sw;
+    });
+  }
+
+  // Root center = PAD + half of total tree width
+  const treeW = minW(tree);
+  layoutNode(tree, PAD + treeW / 2, 0);
+
+  // Ensure nothing goes left of PAD
+  let minX = Infinity;
+  walk(tree, n => { minX = Math.min(minX, n.x); });
+  if (minX < PAD) { const dx = PAD - minX; walk(tree, n => { n.x += dx; }); }
+
+  render();
+  $('canvas-wrap').scrollLeft = 0;
+  $('canvas-wrap').scrollTop  = 0;
+  toast('⊞ Layout applied');
+}
+
+// ──────────────────────────────────────────────────
+//  RENDER
+// ──────────────────────────────────────────────────
+function render() {
+  const canvas = $('canvas');
+  canvas.querySelectorAll('.node').forEach(el => el.remove());
+  nodeEls = {};
+  walk(tree, n => placeNode(n, canvas));
+  // Re-apply zoom
+  canvas.style.transform = `scale(${canvasZoom})`;
+  canvas.style.transformOrigin = '0 0';
+  requestAnimationFrame(() => requestAnimationFrame(drawLines));
+}
+
+function placeNode(node, canvas) {
+  const el = document.createElement('div');
+  el.id = 'nd_' + node.id;
+  el.className = ['node', node.type, node.id === selectedId ? 'selected' : ''].filter(Boolean).join(' ');
+  el.style.cssText = `left:${node.x}px; top:${node.y}px;`;
+  if (node.type !== 'ceo') el.style.background = node.color || '#fff';
+
+  const photo = (node.type !== 'dept') ? `
+    <div class="node-photo" onclick="triggerImg('${node.id}'); event.stopPropagation()">
+      ${node.image ? `<img src="${node.image}" alt="">` : '👤'}
+    </div>` : '';
+
+  const delBtn = node.type !== 'ceo'
+    ? `<button class="na na-del" onclick="deleteNodeUI('${node.id}'); event.stopPropagation()" title="Delete">✕</button>` : '';
+
+  el.innerHTML = `
+    <div class="node-inner">
+      ${photo}
+      <div class="node-name">${esc(node.name)}</div>
+      <div class="node-title">${esc(node.title)}</div>
+      <div class="node-actions">
+        <button class="na na-edit" onclick="openModal('${node.id}'); event.stopPropagation()" title="Edit">✏</button>
+        <button class="na na-add"  onclick="addChild('${node.id}'); event.stopPropagation()" title="Add branch">+</button>
+        ${delBtn}
+      </div>
+    </div>`;
+
+  el.addEventListener('click', e => {
+    if (e.target.closest('.na,.node-photo')) return;
+    selectedId = (selectedId === node.id) ? null : node.id;
+    document.querySelectorAll('.node').forEach(n => n.classList.remove('selected'));
+    if (selectedId) el.classList.add('selected');
+  });
+
+  setupDrag(el, node);
+  canvas.appendChild(el);
+  nodeEls[node.id] = el;
+}
+
+// ──────────────────────────────────────────────────
+//  SVG LINES
+// ──────────────────────────────────────────────────
+function drawLines() {
+  const svg    = $('svg-lines');
+  const canvas = $('canvas');
+  svg.innerHTML = '';
+  svg.setAttribute('width',  Math.max(canvas.scrollWidth, 1600));
+  svg.setAttribute('height', Math.max(canvas.scrollHeight, 1200));
+
+  walk(tree, parent => {
+    const pEl = nodeEls[parent.id];
+    if (!pEl) return;
+    const px = parent.x + pEl.offsetWidth  / 2;
+    const py = parent.y + pEl.offsetHeight;
+
+    (parent.children||[]).forEach(child => {
+      const cEl = nodeEls[child.id];
+      if (!cEl) return;
+      const cx = child.x + cEl.offsetWidth / 2;
+      const cy = child.y;
+      const my = (py + cy) / 2;
+
+      const path = document.createElementNS('http://www.w3.org/2000/svg','path');
+      path.setAttribute('d', `M${px},${py} C${px},${my} ${cx},${my} ${cx},${cy}`);
+      path.setAttribute('stroke', '#b0b8c9');
+      path.setAttribute('stroke-width', '2');
+      path.setAttribute('fill', 'none');
+      path.setAttribute('stroke-linecap', 'round');
+      svg.appendChild(path);
+    });
+  });
+}
+
+// ──────────────────────────────────────────────────
+//  DRAG
+// ──────────────────────────────────────────────────
+function setupDrag(el, node) {
+  let sx, sy, snx, sny, live = false;
+  el.addEventListener('mousedown', e => {
+    if (e.button !== 0 || e.target.closest('.na,.node-photo')) return;
+    sx = e.clientX; sy = e.clientY;
+    snx = node.x; sny = node.y;
+    live = false;
+
+    const onMove = e => {
+      // Account for zoom when converting mouse delta to canvas coordinates
+      const dx = (e.clientX - sx) / canvasZoom;
+      const dy = (e.clientY - sy) / canvasZoom;
+      if (!live && (Math.abs(dx) > 3 || Math.abs(dy) > 3)) {
+        live = true; el.classList.add('dragging');
+      }
+      if (live) {
+        node.x = Math.max(0, snx + dx);
+        node.y = Math.max(0, sny + dy);
+        el.style.left = node.x + 'px';
+        el.style.top  = node.y + 'px';
+        drawLines();
+      }
+    };
+    const onUp = () => {
+      if (live) el.classList.remove('dragging');
+      live = false;
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup',   onUp);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup',   onUp);
+    e.preventDefault();
+  });
+}
+
+// ──────────────────────────────────────────────────
+//  ADD / DELETE
+// ──────────────────────────────────────────────────
+function addChild(parentId) {
+  const parent = find(parentId);
+  if (!parent) return;
+  const isCEO  = parent.type === 'ceo';
+  const count  = (parent.children||[]).length;
+  const newNode = makeNode({
+    name:  isCEO ? 'New Department' : 'New Member',
+    title: isCEO ? 'Department'     : 'Title',
+    type:  isCEO ? 'dept'           : 'member',
+    color: isCEO ? '#e0e7ff' : (parent.color || '#ffffff'),
+    x: parent.x + count * 14,
+    y: parent.y + (isCEO ? 195 : 170),
+  });
+  parent.children.push(newNode);
+  render();
+  setTimeout(() => openModal(newNode.id), 60);
+}
+
+function addToSelected() { addChild(selectedId || 'root'); }
+
+function deleteNodeUI(id) {
+  const node = find(id);
+  if (!node) return;
+  const dc  = countDesc(node);
+  const msg = dc > 0 ? `Delete "${node.name}" and its ${dc} child node(s)?` : `Delete "${node.name}"?`;
+  if (!confirm(msg)) return;
+  removeFromTree(id);
+  if (selectedId === id) selectedId = null;
+  render();
+  toast('🗑️ Deleted', '#dc2626');
+}
+
+// ──────────────────────────────────────────────────
+//  RESET
+// ──────────────────────────────────────────────────
+function resetChart() {
+  if (!confirm('Reset to a blank chart? Save first to keep your work.')) return;
+  tree = makeDefaultTree();
+  $('bizNameIn').value = '';
+  $('bizDateIn').value = '';
+  selectedId = null;
+  render();
+  toast('🔄 Chart reset');
+}
+
+// ──────────────────────────────────────────────────
+//  SAVE / LOAD
+// ──────────────────────────────────────────────────
+function saveChart() {
+  const bizName = $('bizNameIn').value.trim() || 'My Org Chart';
+  const bizDate = $('bizDateIn').value || new Date().toISOString().slice(0,10);
+  const key     = bizName + ' — ' + bizDate;
+  const entry   = {
+    id:      Date.now().toString(),
+    name:    key, bizName, bizDate,
+    saved:   new Date().toLocaleString(),
+    data:    JSON.parse(JSON.stringify(tree))
+  };
+  const idx = savedCharts.findIndex(s => s.name === key);
+  if (idx !== -1) { entry.id = savedCharts[idx].id; savedCharts[idx] = entry; }
+  else             { savedCharts.unshift(entry); }
+  if (savedCharts.length > 25) savedCharts = savedCharts.slice(0,25);
+  try {
+    localStorage.setItem('__orgchart_saves',   JSON.stringify(savedCharts));
+    localStorage.setItem('__orgchart_session', JSON.stringify({ tree, bizName, bizDate }));
+    updateSavesDropdown();
+    toast('💾 Saved: ' + key);
+  } catch(e) { toast('Save failed: ' + e.message, '#dc2626'); }
+}
+
+function loadSave(id) {
+  if (!id) return;
+  const entry = savedCharts.find(s => s.id === id);
+  if (!entry) { $('loadSelect').value = ''; return; }
+  if (!confirm(`Load "${entry.name}"?\nUnsaved changes will be lost.`)) { $('loadSelect').value=''; return; }
+  tree = JSON.parse(JSON.stringify(entry.data));
+  $('bizNameIn').value = entry.bizName || '';
+  $('bizDateIn').value = entry.bizDate || '';
+  selectedId = null; render();
+  toast('📂 Loaded: ' + entry.name);
+  $('loadSelect').value = '';
+}
+
+function deleteCurrentSave() {
+  const id = $('loadSelect').value;
+  if (!id) { toast('Select a saved chart first', '#dc2626'); return; }
+  const entry = savedCharts.find(s => s.id === id);
+  if (!entry || !confirm(`Delete saved chart "${entry.name}"?`)) { $('loadSelect').value=''; return; }
+  savedCharts = savedCharts.filter(s => s.id !== id);
+  localStorage.setItem('__orgchart_saves', JSON.stringify(savedCharts));
+  updateSavesDropdown();
+  toast('🗑️ Save deleted', '#dc2626');
+}
+
+function updateSavesDropdown() {
+  const sel = $('loadSelect'), cur = sel.value;
+  sel.innerHTML = '<option value="">📂 Load Saved Chart…</option>';
+  savedCharts.forEach(s => {
+    const o = document.createElement('option');
+    o.value = s.id; o.textContent = s.name + '  (' + s.saved + ')';
+    sel.appendChild(o);
+  });
+  sel.value = cur;
+}
+
+// ──────────────────────────────────────────────────
+//  EXPORT / IMPORT
+// ──────────────────────────────────────────────────
+function exportChart() {
+  const payload = { bizName: $('bizNameIn').value, bizDate: $('bizDateIn').value, tree };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = ($('bizNameIn').value || 'orgchart').replace(/\s+/g,'_') + '_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click(); URL.revokeObjectURL(a.href);
+  toast('📤 Exported!');
+}
+
+function importChart(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const p = JSON.parse(ev.target.result);
+      if (p.tree) { tree = p.tree; $('bizNameIn').value = p.bizName||''; $('bizDateIn').value = p.bizDate||''; }
+      else tree = p;
+      selectedId = null; render(); toast('📥 Imported!');
+    } catch(err) { alert('Invalid file:\n' + err.message); }
+  };
+  reader.readAsText(file);
+}
+
+// ──────────────────────────────────────────────────
+//  PRINT — auto-scale to fit content on page
+// ──────────────────────────────────────────────────
+function printPDF() {
+  // Calculate bounding box of all nodes
+  let minX=Infinity, minY=Infinity, maxX=0, maxY=0;
+  walk(tree, node => {
+    const el = nodeEls[node.id];
+    if (!el) return;
+    minX = Math.min(minX, node.x);
+    minY = Math.min(minY, node.y);
+    maxX = Math.max(maxX, node.x + el.offsetWidth);
+    maxY = Math.max(maxY, node.y + el.offsetHeight);
+  });
+
+  const contentW = maxX - minX + 80;
+  const contentH = maxY - minY + 80;
+
+  // A4 landscape printable area (approx at 96dpi screen resolution)
+  const pageW = 1060, pageH = 730;
+  const scale = Math.min(pageW / contentW, pageH / contentH, 1);
+
+  // Inject a temporary print-only stylesheet
+  const sid = '__print_style';
+  let s = document.getElementById(sid);
+  if (!s) { s = document.createElement('style'); s.id = sid; document.head.appendChild(s); }
+
+  s.textContent = `
+    @media print {
+      #canvas {
+        transform: scale(${scale}) !important;
+        transform-origin: ${minX}px ${minY}px !important;
+      }
+      #canvas-wrap {
+        width:  ${contentW * scale + 40}px !important;
+        height: ${contentH * scale + 40}px !important;
+        min-width: unset !important;
+        min-height: unset !important;
+      }
+    }
+  `;
+
+  window.print();
+
+  // Clean up print style after printing
+  setTimeout(() => { if (s) s.textContent = ''; }, 2000);
+}
+
+// ──────────────────────────────────────────────────
+//  MODAL
+// ──────────────────────────────────────────────────
+function openModal(id) {
+  const node = find(id); if (!node) return;
+  editingId = id; editImg = node.image;
+  $('modalTitle').textContent =
+    node.type === 'ceo' ? 'Edit CEO / Owner' : node.type === 'dept' ? 'Edit Department' : 'Edit Member';
+  $('mName').value = node.name  || '';
+  $('mRole').value = node.title || '';
+  $('photoField').style.display = node.type === 'dept' ? 'none' : '';
+  $('colorField').style.display = node.type === 'ceo'  ? 'none' : '';
+  setModalPhoto(node.image);
+
+  const pal = $('palette'); pal.innerHTML = '';
+  COLORS.forEach(c => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch' + (node.color === c ? ' picked' : '');
+    sw.style.background = c;
+    sw.style.border = `2px solid ${c === '#ffffff' ? '#d1d5db' : c}`;
+    sw.onclick = () => {
+      pal.querySelectorAll('.swatch').forEach(s => s.classList.remove('picked'));
+      sw.classList.add('picked'); $('customColor').value = c;
+    };
+    pal.appendChild(sw);
+  });
+  $('customColor').value = (node.color && node.color !== 'ceo') ? node.color : '#ffffff';
+  $('modalBg').classList.add('open');
+  setTimeout(() => $('mName').focus(), 50);
+}
+
+function closeModal() { $('modalBg').classList.remove('open'); editingId = null; editImg = null; }
+
+function saveModal() {
+  const node = find(editingId); if (!node) return;
+  node.name  = $('mName').value || node.name;
+  node.title = $('mRole').value || node.title;
+  node.image = editImg;
+  if (node.type !== 'ceo') {
+    const picked = document.querySelector('#palette .swatch.picked');
+    node.color = picked ? picked.style.background : $('customColor').value;
+  }
+  closeModal(); render(); toast('✓ Saved');
+}
+
+function setModalPhoto(src) {
+  const img = $('mPhotoImg'), icon = $('mPhotoIcon');
+  if (src) { img.src = src; img.style.display = ''; icon.style.display = 'none'; }
+  else      { img.style.display = 'none'; icon.style.display = ''; }
+}
+function clearModalPhoto() { editImg = null; setModalPhoto(null); }
+function pickCustomColor()  { document.querySelectorAll('#palette .swatch').forEach(s=>s.classList.remove('picked')); }
+
+// ──────────────────────────────────────────────────
+//  IMAGE UPLOAD
+// ──────────────────────────────────────────────────
+function triggerImg(target) { imgTarget = target; $('imgIn').value = ''; $('imgIn').click(); }
+function onImageFile(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = ev.target.result;
+    if (imgTarget === 'modal') { editImg = data; setModalPhoto(data); }
+    else { const n = find(imgTarget); if (n) { n.image = data; render(); toast('📷 Photo updated'); } }
+  };
+  reader.readAsDataURL(file);
+}
+
+// ──────────────────────────────────────────────────
+//  KEYBOARD
+// ──────────────────────────────────────────────────
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeModal();
+  if ((e.ctrlKey||e.metaKey) && e.key==='s') { e.preventDefault(); saveChart(); }
+  if ((e.ctrlKey||e.metaKey) && (e.key==='=' || e.key==='+')) { e.preventDefault(); changeZoom(+0.1); }
+  if ((e.ctrlKey||e.metaKey) && e.key==='-') { e.preventDefault(); changeZoom(-0.1); }
+  if ((e.key==='Delete'||e.key==='Backspace') && selectedId && !$('modalBg').classList.contains('open')) {
+    if (!e.target.matches('input,textarea')) {
+      const n = find(selectedId);
+      if (n && n.type !== 'ceo') deleteNodeUI(selectedId);
+    }
+  }
+});
+$('modalBg').addEventListener('click', e => { if (e.target===$('modalBg')) closeModal(); });
+$('canvas-wrap').addEventListener('click', e => {
+  if (e.target===$('canvas') || e.target===$('canvas-wrap') || e.target===$('svg-lines')) {
+    selectedId = null;
+    document.querySelectorAll('.node.selected').forEach(n=>n.classList.remove('selected'));
+  }
+});
+
+// ──────────────────────────────────────────────────
+//  TOAST
+// ──────────────────────────────────────────────────
+let _tt;
+function toast(msg, bg='#111827') {
+  const el=$('toast'); el.textContent=msg; el.style.background=bg;
+  el.classList.add('show'); clearTimeout(_tt);
+  _tt=setTimeout(()=>el.classList.remove('show'), 2800);
+}
+
+// ──────────────────────────────────────────────────
+//  INIT
+// ──────────────────────────────────────────────────
+function updateCanvasTop() {
+  $('canvas-wrap').style.top = $('toolbar').offsetHeight + 'px';
+}
+updateCanvasTop();
+updateSavesDropdown();
+render();
+</script>
+</body>
+</html>
